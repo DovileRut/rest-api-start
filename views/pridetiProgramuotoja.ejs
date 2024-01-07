@@ -1,0 +1,59 @@
+<%- include('partials/header') -%>
+
+<h2 class="pridejimo-pavadinimas">Prideti programuotoją</h2>
+<div class="prideti-container">
+    <form class="add-prog">
+        <h2>Įveskite informaciją:</h2>
+        <label for="vardas">Vardas:</label>
+        <input type="text" name="vardas" required>
+
+        <label for="tech">Kokias programavimo kalbas mokate?</label>
+        <input type="text" name="tech" required>
+
+        <label for="laisvas">Ar šiuo metu esate laisvas dirbti?</label>
+        <select name="laisvas">
+            <option value="true">Taip</option>
+            <option value="false">Ne</option>
+        </select>
+
+        <label for="location">Koordinatės (Ilguma, platuma):</label>
+        <input name="location" required>
+
+        <button>Užregistruoti</button>
+    </form>
+</div>
+
+<script>
+    const form = document.querySelector("form")
+
+    form.addEventListener("submit", async e => {
+        e.preventDefault()
+
+        const vardas = form.vardas.value
+        const tech = form.tech.value.split(",")
+        const laisvas = form.laisvas.value
+        const location = {type: "Point", coordinates: form.location.value.split(",")}
+
+        try {
+            const res = await fetch("/api/programuotojai", {
+                method: "POST",
+                body: JSON.stringify({vardas, tech, laisvas, location}),
+                headers: {"Content-Type": "application/json"}
+            })
+            const data = await res.json()
+            console.log(data)
+
+            if (data.dev) {
+                alert('Programuotojas sukurtas!')
+                window.location.assign("/")
+            }
+
+        } catch (err) {
+            console.log(err);
+        }
+    })
+
+</script>
+
+
+<%- include('partials/footer') -%>

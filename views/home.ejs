@@ -1,0 +1,158 @@
+<%- include('partials/header') -%>
+
+<h1 class="title">Programuotojai API</h1>
+<div id="homepage">
+    <h2>Surask programuotoją šalia savęs!</h2>
+    <div id="devs"></div>
+</div>
+
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<script src="https://unpkg.com/react@15/dist/react.js"></script>
+<script src="https://unpkg.com/react-dom@15/dist/react-dom.min.js"></script>
+
+<!-- Create React Component -->
+<script type="text/babel">
+    var Devs = React.createClass({
+        getInitialState: function(){
+            return({
+                devs: []
+            })
+        },
+        render: function() {
+            var devs = this.state.devs;
+            devs = devs.map(function(dev, index)  {
+                var statusColor = {}
+                if (dev.laisvas) {
+                    statusColor.color = 'green'
+                } else {
+                    statusColor.color = 'red'
+                }
+                return (
+                    <li key={index}>
+                        <span className={dev.laisvas ? 'true' : 'false'} style={statusColor}></span>
+                        <span className="name">{dev.vardas}</span>
+                        <span className="rank">{dev.tech.join(', ')}</span>
+                        <span className="dist">{Math.floor(dev.distance / 1000)} km</span>
+                        <button className="btn"  onClick={() => this.handleEdit(dev._id)}>Keisti</button>
+                        <button className="btn" onClick={() => this.handleDelete(dev._id)}>Trinti</button>
+                        {this.state.editing === dev._id ? (
+                            <div className="edit-container">
+                                <label for="vardas">Vardas:</label>
+                                <input type="text" defaultValue={dev.vardas} ref={'vardas_' + dev._id} />
+                                <label for="tech">Kokias programavimo kalbas mokate?</label>
+                                <input type="text" defaultValue={dev.tech.join(', ')} ref={'tech_' + dev._id} />
+                                <label for="laisvas">Ar laisvas?</label>
+                                <select ref={'laisvas_' + dev._id} >
+                                    <option value="true">Taip</option>
+                                    <option value="false">Ne</option>
+                                </select>
+                                <label for="location">Jūsų koordinatės:</label>
+                                <input type="text" defaultValue={dev.location.coordinates.join(', ')} ref={'location_' + dev._id} />
+                                <button className="btn"  onClick={() => this.handleSave(dev._id)}>Išsaugoti</button>
+                            </div>
+                        ) : null}
+                    </li>
+                )
+            }, this)
+            
+
+            return (
+                <div id="dev-container">
+                    <form id="search" onSubmit={this.handleSubmit}>
+                        <label>Ilguma:</label>
+                        <input type="number" ref="lng" placeholder="ilguma" required />
+                        <label>Platuma:</label>
+                        <input type="number" ref="lat" placeholder="platuma" required />
+                        <input type="submit" value="Rasti programuotojus" />
+                    </form>
+                    <ul>{devs}</ul>
+                </div>
+            )
+        },
+
+        handleSubmit: function(e) {
+            e.preventDefault();
+            var lng = this.refs.lng.value
+            var lat = this.refs.lat.value
+
+            fetch('/api/programuotojai/?lng=' + lng + '&lat=' + lat)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok')
+                    }
+                    return response.json()
+                })
+                .then(json => {
+                    this.setState({
+                        devs: json
+                    })
+                    console.log(json)
+                })
+                .catch(error => {
+                    console.error('Error during fetch:', error)
+                })
+        },
+
+        handleEdit: function(devId) {
+            this.setState({ editing: devId });
+        },
+
+        handleSave: function(devId) {
+            const updatedData = {
+                vardas: this.refs['vardas_' + devId].value, 
+                tech: this.refs['tech_' + devId].value.split(',').map(tech => tech.trim()), 
+                laisvas: this.refs['laisvas_' + devId].value === 'true',
+                location: {
+                    type: 'Point',
+                    coordinates: this.refs['location_' + devId].value.split(',').map(coord => parseFloat(coord.trim())) 
+                }
+            }
+            
+            fetch(`/api/programuotojai/${devId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedData)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Nepavyko atnaujinti duomenų')
+                    }
+                    return response.json()
+                })
+                .then(data => {
+                    this.setState({ editing: null })
+                    alert('Duomenys atnaujinti sėkmingai!')
+                    window.location.reload()
+                })
+                .catch(error => {
+                    console.error('Klaida atnaujinant duomenis:', error)
+                })
+        },
+
+        handleDelete: function(devId) {
+            fetch(`/api/programuotojai/${devId}`, {
+                method: 'DELETE'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Nepavyko ištrinti programuotojo');
+                    }
+                    return response.json()
+                })
+                .then(() => {
+                    this.setState({ devs: [] })
+                    alert('Programuotojas ištrintas sėkmingai!')
+                    window.location.reload()
+                })
+                .catch(error => {
+                    console.error('Klaida trinant programuotoją:', error)
+                })
+        }
+})
+
+ ReactDOM.render(<Devs />, document.getElementById('devs'))
+</script>
+
+<%- include('partials/footer') -%>
